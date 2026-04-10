@@ -439,7 +439,7 @@ if __name__ == '__main__':
                 data, s = connect_ip150readData(s,"GET /statuslive.html?u=" + u + "&p=" + p + " HTTP/1.1\r\nHost: " + IP150_IP + ':' + str(IP150_Port) + "\r\nConnection: keep-alive\r\nCache-Control: max-age=0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.94 Safari/537.36\r\nAccept-Encoding: gzip, deflate, sdch\r\nAccept-Language: en,af;q=0.8,en-GB;q=0.6\r\n\r\n")
 
                 zones = (data.split('tbl_statuszone = new Array'))[1].split(';var')[0]
-
+                
                 # Zone statuses
                 # 0 = Closed
                 # 1 = Opened
@@ -455,16 +455,17 @@ if __name__ == '__main__':
                 for counter in range (1,TotalZones+1,1):
                     if ZoneStatuses[counter] != int(zones[counter*2-1]):
                         ZoneStatuses[counter] = int(zones[counter*2-1])
-                        if ZoneStatuses[counter] in [1, 2, 4, 6, 9] :
+                        if ZoneStatuses[counter] in [1, 2, 4, 6, 7, 9] :
                             newZoneState = Payload_Publish_Zone_States_Open
                         else:
                             newZoneState = Payload_Publish_Zone_States_Closed
+                        print Topic_Publish_Zone_States + "/Z" + str(counter)
                         #client.publish(Topic_Publish_Zone_States + "/Z" + str(counter), "S:" + newZoneState + ",P:" + ZoneNames[counter*2-2] + ",N:" + ZoneNames[counter*2-1], qos=0, retain=False)
                         client.publish(Topic_Publish_Zone_States + "/Z" + str(counter), newZoneState, qos=0, retain=False)
 
 
                 AlarmStatusRead = (data.split('tbl_useraccess = new Array('))[1].split(')')[0].split(',')
-                #print "AlarmStatusRead: " + repr(AlarmStatusRead)
+                # print "AlarmStatusRead: " + repr(AlarmStatusRead)
                 for c, val in enumerate(AlarmStatusRead):
                     if AlarmStatus[c] != val:
                         if val == '1':
@@ -488,20 +489,24 @@ if __name__ == '__main__':
                         elif val == '10':
                             newstate = "Instant"
                         else:
-                            newstate = "Unsure: (" + val + ")"
-
-                        client.publish(Topic_Publish_Alarm_States + "/P" + str(c+1), newstate, qos=0, retain=False)
+                            newstate = "Unsure: (" + val + ")" 
+              	        Topic_Publish_Alarm_States + "/P" + str(c+1) + ":" + newstate 
+              	        client.publish(Topic_Publish_Alarm_States + "/P" + str(c+1), newstate, qos=0, 
+              	        retain=False)
                 AlarmStatus = AlarmStatusRead
 
-                SirenStatusRead = (data.split('tbl_alarmes = new Array('))[1].split(')')[0]
+                SirenStatusRead_raw = (data.split('tbl_alarmes = new Array('))[1].split(')')[0]
+                print "SirenStatusRead_raw: " + SirenStatusRead_raw
+                SirenStatusRead = "1" if SirenStatusRead_raw.strip() != '' else "0"
+                print "SirenStatusRead: " + SirenStatusRead
 
                 if SirenStatusRead != SirenStatus:
-                    client.publish(Topic_Publish_Siren_Status , str(SirenStatusRead), qos=0, retain=False)
+                    client.publish(Topic_Publish_Siren_Status , SirenStatusRead, qos=0, retain=False)
                     SirenStatus = SirenStatusRead
 
 
 
-                #print "Polling (i=", i, ") - , Zones: " + zones + " - ", AlarmStatus
+                #print "Polling, Zones: " + zones + " - ", AlarmStatus
 
                 s.close()
 
